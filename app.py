@@ -16,7 +16,7 @@ st.set_page_config(
     layout="wide"
 )
 
-DATA_DIR = Path(__file__).resolve().parents[1] / "dashboard_data"
+DATA_DIR = Path(__file__).resolve().parent / "dashboard_data"
 
 
 # --------------------------------------------------
