@@ -1,0 +1,12 @@
+{
+  "loyal_buyers_cnt": 396,
+  "df_loyal_cc_rows": 12704,
+  "df_loyal_cc_checks": 10923,
+  "df_loyal_cc_brands": 22,
+  "df_loyal_cc_flavor_groups": 14,
+  "period_min": "2023-01-01 12:38:39",
+  "period_max": "2025-12-30 11:18:00",
+  "never_buyers_cnt": 29337,
+  "inflation_period_min": "2023-01-01 00:00:00",
+  "inflation_period_max": "2025-12-01 00:00:00"
+}

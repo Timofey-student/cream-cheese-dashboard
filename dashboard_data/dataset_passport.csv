@@ -1,0 +1,14 @@
+metric,value
+rows_total,16509165
+buyers_nunique,35175
+checks_nunique,1549482
+operations_nunique,16509165
+date_min,2023-01-01 08:04:44
+date_max,2025-12-31 10:38:00
+avg_rows_per_check,10.654634903793655
+median_rows_per_check,8.0
+share_checks_gt_1_row_pct,97.65127958892069
+cream_cheese_rows,1102327
+cream_cheese_rows_share_pct,6.677060893146322
+violette_rows_in_full,26569
+violette_rows_share_in_full_pct,0.16093485043004901

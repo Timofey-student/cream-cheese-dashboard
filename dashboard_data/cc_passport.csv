@@ -1,0 +1,14 @@
+metric,value
+rows_total,1102327
+buyers_nunique,34199
+checks_nunique,1037401
+operations_nunique,1102327
+date_min,2023-01-01 08:04:44
+date_max,2025-12-31 10:38:00
+brands_nunique,24
+flavor_groups_nunique,14
+pack_sizes_nunique,47
+amount_sum,192797985.18413988
+volume_kg_sum,232221.94
+marketplace_rows_share_pct,28.768323736967343
+violette_rows_share_pct,2.410264830671842
