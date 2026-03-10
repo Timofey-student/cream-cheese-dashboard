@@ -1,6 +1,5 @@
 import json
 from pathlib import Path
-import plotly.graph_objects as go
 
 import pandas as pd
 import plotly.express as px
@@ -11,7 +10,7 @@ import streamlit as st
 # Page config
 # --------------------------------------------------
 st.set_page_config(
-    page_title="Cream Cheese Dashboard",
+    page_title="Дэшборд по творожным сырам",
     page_icon="🧀",
     layout="wide"
 )
@@ -66,6 +65,35 @@ def show_metric_row(metrics: list[tuple[str, str]]):
         col.metric(label, value)
 
 
+def rename_channel_value(x):
+    return {
+        True: "Маркетплейс",
+        False: "Не маркетплейс",
+        "marketplace": "Маркетплейс",
+        "non_marketplace": "Не маркетплейс",
+        "non-marketplace": "Не маркетплейс",
+        "non_market_place": "Не маркетплейс",
+    }.get(x, x)
+
+
+def prettify_metric_name(metric: str) -> str:
+    mapping = {
+        "checks_per_buyer": "Число чеков на покупателя",
+        "kg_per_buyer": "Кг на покупателя",
+        "rub_per_buyer": "Рублей на покупателя",
+        "checks_share_pct": "Доля чеков, %",
+        "rub_share_pct": "Доля выручки, %",
+        "kg_share_pct": "Доля объёма, %",
+        "price_per_kg_weighted": "Средневзвешенная цена за кг",
+        "price_index_jan2023_100": "Индекс цены, январь 2023 = 100",
+        "avg_pack_price": "Средняя цена упаковки",
+        "total_rub": "Выручка, руб",
+        "total_kg": "Объём, кг",
+        "checks_nunique": "Число чеков",
+    }
+    return mapping.get(metric, metric)
+
+
 # --------------------------------------------------
 # Load data
 # --------------------------------------------------
@@ -81,7 +109,11 @@ top_loyal_products_real = load_parquet("top_loyal_products_real")
 top_never_products_real = load_parquet("top_never_products_real")
 
 common_products = load_parquet("common_products")
-overlap_summary = load_csv("overlap_summary") if (DATA_DIR / "overlap_summary.csv").exists() else load_parquet("overlap_summary")
+overlap_summary = (
+    load_csv("overlap_summary")
+    if (DATA_DIR / "overlap_summary.csv").exists()
+    else load_parquet("overlap_summary")
+)
 common_products_short = load_parquet("common_products_short")
 common_affinity_filtered = load_parquet("common_affinity_filtered")
 common_affinity_mass = load_parquet("common_affinity_mass")
@@ -127,34 +159,34 @@ final_table_presentation = load_parquet("final_table_presentation")
 # --------------------------------------------------
 # Title
 # --------------------------------------------------
-st.title("Dashboard по творожным сырам")
+st.title("Дэшборд по творожным сырам")
 st.caption("Анализ loyal-когорты покупателей Violette, 2023-2025")
 
 top_metrics = [
-    ("Loyal buyers", fmt_int(meta_info["loyal_buyers_cnt"])),
+    ("Loyal-покупатели", fmt_int(meta_info["loyal_buyers_cnt"])),
     ("Строк категории", fmt_int(meta_info["df_loyal_cc_rows"])),
     ("Чеки категории", fmt_int(meta_info["df_loyal_cc_checks"])),
-    ("Бренды", fmt_int(meta_info["df_loyal_cc_brands"])),
-    ("Flavor groups", fmt_int(meta_info["df_loyal_cc_flavor_groups"])),
+    ("Число брендов", fmt_int(meta_info["df_loyal_cc_brands"])),
+    ("Число flavor_group", fmt_int(meta_info["df_loyal_cc_flavor_groups"])),
 ]
 
 if "never_buyers_cnt" in meta_info:
-    top_metrics.append(("Never buyers", fmt_int(meta_info["never_buyers_cnt"])))
+    top_metrics.append(("Never-покупатели", fmt_int(meta_info["never_buyers_cnt"])))
 
 show_metric_row(top_metrics)
 
 st.info(
-    "Фильтры применяются только внутри текущего блока или вкладки. "
-    "Каждый раздел дэшборда управляется отдельно."
+    "Фильтры работают только внутри текущего блока или вкладки. "
+    "Каждый раздел дэшборда настраивается отдельно."
 )
 
 tab_overview, tab_seg, tab_price, tab_pack, tab_time, tab_comp = st.tabs([
-    "Overview",
-    "Segmentation",
-    "Pricing",
-    "Packs",
-    "Time & Flavor",
-    "Competitors"
+    "Обзор",
+    "Сегментация",
+    "Цены",
+    "Фасовки",
+    "Время и вкусы",
+    "Конкуренты"
 ])
 
 
@@ -162,8 +194,8 @@ tab_overview, tab_seg, tab_price, tab_pack, tab_time, tab_comp = st.tabs([
 # TAB 1 - OVERVIEW
 # --------------------------------------------------
 with tab_overview:
-    st.header("Overview")
-    st.caption("Общая картина loyal-когорты и итоговые ключевые метрики.")
+    st.header("Обзор")
+    st.caption("Общая картина loyal-когорты и ключевые итоговые метрики.")
 
     col1, col2 = st.columns([1.4, 1])
     with col1:
@@ -188,7 +220,7 @@ with tab_overview:
     st.subheader("Динамика доли брендов по годам")
     brand_year_options = sorted(loyal_brand_yearly["brand"].dropna().unique().tolist())
     selected_brands = st.multiselect(
-        "Бренды для сравнения долей по годам",
+        "Выберите бренды для сравнения по годам",
         brand_year_options,
         default=[b for b in ["violette", "hochland", "ekomilk", "almette"] if b in brand_year_options],
         key="overview_brand_year"
@@ -211,12 +243,12 @@ with tab_overview:
 # TAB 2 - SEGMENTATION
 # --------------------------------------------------
 with tab_seg:
-    st.header("Segmentation")
+    st.header("Сегментация")
     st.caption("Размер сегментов, активность, каналы и сопутствующие товары.")
 
     col1, col2 = st.columns(2)
     with col1:
-        st.subheader("Размер и метрики сегментов")
+        st.subheader("Размер и ключевые метрики сегментов")
         st.dataframe(segment_metrics, use_container_width=True)
 
     with col2:
@@ -229,10 +261,11 @@ with tab_seg:
         fig.update_layout(xaxis_title="Сегмент", yaxis_title="Покупатели")
         st.plotly_chart(fig, use_container_width=True)
 
-    st.subheader("Частота и интенсивность покупок по месяцам")
+    st.subheader("Динамика активности сегментов по месяцам")
     metric_option = st.selectbox(
-        "Метрика месячной динамики сегментов",
+        "Выберите метрику динамики сегментов",
         ["checks_per_buyer", "kg_per_buyer", "rub_per_buyer"],
+        format_func=prettify_metric_name,
         key="seg_metric"
     )
 
@@ -241,21 +274,22 @@ with tab_seg:
         x="month_start",
         y=metric_option,
         color="segment",
-        title=f"{metric_option} по сегментам"
+        title=f"{prettify_metric_name(metric_option)} по сегментам"
     )
-    fig2.update_layout(xaxis_title="Месяц", yaxis_title=metric_option)
+    fig2.update_layout(
+        xaxis_title="Месяц",
+        yaxis_title=prettify_metric_name(metric_option)
+    )
     st.plotly_chart(fig2, use_container_width=True)
 
     st.subheader("Канальная структура сегментов")
     channel_plot = channel_share.copy()
-    channel_plot["channel"] = channel_plot["is_marketplace"].map({
-        True: "Маркетплейс",
-        False: "Не маркетплейс"
-    })
+    channel_plot["channel"] = channel_plot["is_marketplace"].map(rename_channel_value)
 
     share_option = st.selectbox(
-        "Показатель канальной структуры",
+        "Выберите показатель канальной структуры",
         ["checks_share_pct", "rub_share_pct", "kg_share_pct"],
+        format_func=prettify_metric_name,
         key="seg_channel_metric"
     )
 
@@ -265,12 +299,12 @@ with tab_seg:
         y=share_option,
         color="channel",
         barmode="group",
-        title=f"{share_option} по сегментам"
+        title=f"{prettify_metric_name(share_option)} по сегментам"
     )
     fig3.update_layout(xaxis_title="Сегмент", yaxis_title="%")
     st.plotly_chart(fig3, use_container_width=True)
 
-    st.subheader("Сопутствующие товары: top-списки")
+    st.subheader("Сопутствующие товары: короткие top-списки")
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("**Loyal Violette**")
@@ -283,7 +317,7 @@ with tab_seg:
     st.subheader("Пересечение сопутствующих товаров")
     col1, col2 = st.columns([0.9, 1.4])
     with col1:
-        st.markdown("**Overlap summary**")
+        st.markdown("**Сводка overlap**")
         st.dataframe(overlap_summary, use_container_width=True)
 
     with col2:
@@ -301,8 +335,7 @@ with tab_seg:
         st.dataframe(common_affinity_filtered.head(20), use_container_width=True)
 
     st.subheader("Канальные рекомендации для сегмента Never Violette")
-    st.caption("Когда лучше показывать рекламу Violette для тех, кто бренд не покупает.")
-
+    st.caption("Когда лучше показывать рекламу Violette тем, кто бренд пока не покупает.")
     st.dataframe(ad_reco_channel, use_container_width=True)
 
 
@@ -310,26 +343,22 @@ with tab_seg:
 # TAB 3 - PRICING
 # --------------------------------------------------
 with tab_price:
-    st.header("Pricing")
+    st.header("Цены")
     st.caption("Динамика цены loyal-когорты, брендов, каналов и сопоставление с официальной инфляцией.")
 
     st.subheader("Цена loyal-когорты")
     price_mode = st.selectbox(
-        "Основной график loyal-когорты",
+        "Выберите основной график цены loyal-когорты",
         ["price_per_kg_weighted", "price_index_jan2023_100"],
+        format_func=prettify_metric_name,
         key="price_main_mode"
     )
-
-    title_map = {
-        "price_per_kg_weighted": "Средневзвешенная цена за кг",
-        "price_index_jan2023_100": "Индекс цены, январь 2023 = 100"
-    }
 
     fig = px.line(
         loyal_price_monthly,
         x="month_start",
         y=price_mode,
-        title=title_map[price_mode]
+        title=prettify_metric_name(price_mode)
     )
     fig.update_layout(
         xaxis_title="Месяц",
@@ -337,9 +366,6 @@ with tab_price:
     )
     st.plotly_chart(fig, use_container_width=True)
 
-    # ----------------------------------------------
-    # Подготовка индекса инфляции
-    # ----------------------------------------------
     loyal_price_vs_infl_local = loyal_price_vs_infl.sort_values("month_start").reset_index(drop=True).copy()
 
     pi = loyal_price_vs_infl_local["official_inflation_yoy"] / 100
@@ -351,10 +377,7 @@ with tab_price:
 
     loyal_price_vs_infl_local["inflation_index_jan2023_100"] = infl_index
 
-    # ----------------------------------------------
-    # Индекс цены категории vs индекс инфляции
-    # ----------------------------------------------
-    st.subheader("Индекс цены категории vs индекс официальной инфляции")
+    st.subheader("Индекс цены категории и индекс официальной инфляции")
     st.caption(
         "Обе линии приведены к базе январь 2023 = 100. "
         "Индекс инфляции восстановлен приближённо из официальной инфляции, заданной в % годовых по месяцам, "
@@ -382,7 +405,7 @@ with tab_price:
         x="month_start",
         y="value",
         color="series",
-        title="Индекс цены категории vs индекс официальной инфляции"
+        title="Индекс цены категории и индекс официальной инфляции"
     )
     fig_infl_index.update_layout(
         xaxis_title="Месяц",
@@ -405,7 +428,7 @@ with tab_price:
     st.subheader("Цена по брендам")
     brand_options = sorted(brand_price_monthly["brand"].dropna().unique().tolist())
     selected_price_brands = st.multiselect(
-        "Бренды для сравнения цены",
+        "Выберите бренды для сравнения цены",
         brand_options,
         default=[b for b in ["violette", "hochland", "ekomilk", "almette", "no_brand"] if b in brand_options],
         key="price_brands"
@@ -422,22 +445,16 @@ with tab_price:
     fig2.update_layout(xaxis_title="Месяц", yaxis_title="Руб/кг")
     st.plotly_chart(fig2, use_container_width=True)
 
-    st.subheader("Violette по каналам")
+    st.subheader("Цена Violette по каналам")
     col1, col2 = st.columns([0.9, 1.2])
     with col1:
         violette_channel_show = violette_channel.copy()
-        violette_channel_show["Канал"] = violette_channel_show["is_marketplace"].map({
-            True: "Маркетплейс",
-            False: "Не маркетплейс"
-        })
+        violette_channel_show["Канал"] = violette_channel_show["is_marketplace"].map(rename_channel_value)
         st.dataframe(violette_channel_show, use_container_width=True)
 
     with col2:
         temp = violette_channel_monthly.copy()
-        temp["channel"] = temp["is_marketplace"].map({
-            True: "Маркетплейс",
-            False: "Не маркетплейс"
-        })
+        temp["channel"] = temp["is_marketplace"].map(rename_channel_value)
         fig3 = px.line(
             temp,
             x="month_start",
@@ -453,12 +470,12 @@ with tab_price:
 # TAB 4 - PACKS
 # --------------------------------------------------
 with tab_pack:
-    st.header("Packs")
+    st.header("Фасовки")
     st.caption("Фасовки, их структура, цены и миграция по годам.")
 
     pack_brand_options = sorted(pack_total_all["brand"].dropna().unique().tolist())
     selected_pack_brand = st.selectbox(
-        "Бренд для анализа фасовок",
+        "Выберите бренд для анализа фасовок",
         pack_brand_options,
         index=pack_brand_options.index("violette") if "violette" in pack_brand_options else 0,
         key="pack_brand"
@@ -498,17 +515,21 @@ with tab_pack:
 
     st.subheader("Цена по фасовкам")
     pack_metric = st.selectbox(
-        "Метрика фасовок",
+        "Выберите метрику фасовок",
         ["price_per_kg_weighted", "avg_pack_price"],
+        format_func=prettify_metric_name,
         key="pack_metric"
     )
     fig3 = px.bar(
         pack_total_brand.sort_values("total_kg", ascending=False).head(12),
         x="pack_size_g",
         y=pack_metric,
-        title=f"{pack_metric} по фасовкам бренда {selected_pack_brand}"
+        title=f"{prettify_metric_name(pack_metric)} по фасовкам бренда {selected_pack_brand}"
     )
-    fig3.update_layout(xaxis_title="Фасовка, г", yaxis_title=pack_metric)
+    fig3.update_layout(
+        xaxis_title="Фасовка, г",
+        yaxis_title=prettify_metric_name(pack_metric)
+    )
     st.plotly_chart(fig3, use_container_width=True)
 
 
@@ -516,13 +537,13 @@ with tab_pack:
 # TAB 5 - TIME & FLAVOR
 # --------------------------------------------------
 with tab_time:
-    st.header("Time & Flavor")
+    st.header("Время и вкусы")
     st.caption("Дни недели, сезонность, время суток, flavor_group и рекомендации по каналам.")
 
     st.subheader("Временные паттерны по брендам")
     time_brand_options = sorted(dow_brand_all["brand"].dropna().unique().tolist())
     selected_time_brands = st.multiselect(
-        "Бренды для временных паттернов",
+        "Выберите бренды для сравнения временных паттернов",
         time_brand_options,
         default=[b for b in ["violette", "hochland", "ekomilk", "no_brand"] if b in time_brand_options],
         key="time_brands"
@@ -538,7 +559,7 @@ with tab_time:
             y="kg_share_pct",
             color="brand",
             barmode="group",
-            title="Доля объема по дням недели"
+            title="Доля объёма по дням недели"
         )
         fig.update_layout(xaxis_title="День недели", yaxis_title="% кг")
         st.plotly_chart(fig, use_container_width=True)
@@ -552,7 +573,7 @@ with tab_time:
             y="kg_share_pct",
             color="brand",
             barmode="group",
-            title="Доля объема по времени суток"
+            title="Доля объёма по времени суток"
         )
         fig2.update_layout(xaxis_title="Время суток", yaxis_title="% кг")
         st.plotly_chart(fig2, use_container_width=True)
@@ -570,10 +591,21 @@ with tab_time:
     st.subheader("Канальные рекомендации для Never Violette")
     st.dataframe(ad_reco_channel, use_container_width=True)
 
+    never_month_plot = never_month_channel.copy()
+    never_dow_plot = never_dow_channel.copy()
+    never_daypart_plot = never_daypart_channel.copy()
+
+    if "channel" in never_month_plot.columns:
+        never_month_plot["channel"] = never_month_plot["channel"].map(rename_channel_value)
+    if "channel" in never_dow_plot.columns:
+        never_dow_plot["channel"] = never_dow_plot["channel"].map(rename_channel_value)
+    if "channel" in never_daypart_plot.columns:
+        never_daypart_plot["channel"] = never_daypart_plot["channel"].map(rename_channel_value)
+
     col1, col2, col3 = st.columns(3)
     with col1:
         fig_nm = px.line(
-            never_month_channel,
+            never_month_plot,
             x="month",
             y="kg_per_buyer",
             color="channel",
@@ -585,7 +617,7 @@ with tab_time:
 
     with col2:
         fig_nd = px.line(
-            never_dow_channel,
+            never_dow_plot,
             x="dow_name",
             y="kg_per_buyer",
             color="channel",
@@ -597,7 +629,7 @@ with tab_time:
 
     with col3:
         fig_np = px.line(
-            never_daypart_channel,
+            never_daypart_plot,
             x="daypart",
             y="kg_per_buyer",
             color="channel",
@@ -616,32 +648,27 @@ with tab_time:
         st.subheader("Топ-3 flavor_group по годам")
         st.dataframe(top3_flavors_final, use_container_width=True)
 
-    st.subheader("Flavor_group по брендам")
+    st.subheader("Распределение flavor_group по брендам")
     flavor_brand_options = sorted(brand_flavor_all["brand"].dropna().unique().tolist())
     selected_flavor_brands = st.multiselect(
-        "Бренды для flavor_group",
+        "Выберите бренды для сравнения flavor_group",
         flavor_brand_options,
         default=[b for b in ["violette", "hochland", "almette", "ekomilk"] if b in flavor_brand_options],
         key="flavor_brands"
     )
 
     flavor_metric = st.selectbox(
-        "Метрика flavor_group",
+        "Выберите метрику flavor_group",
         ["total_rub", "total_kg", "checks_nunique"],
+        format_func=prettify_metric_name,
         index=0,
         key="flavor_metric"
     )
 
-    metric_title_map = {
-        "total_rub": "Выручка, руб",
-        "total_kg": "Объём, кг",
-        "checks_nunique": "Число чеков"
-    }
-
     temp_flavor = brand_flavor_all[brand_flavor_all["brand"].isin(selected_flavor_brands)].copy()
 
     use_log_scale = st.toggle(
-        "Логарифмическая шкала для полного графика",
+        "Использовать логарифмическую шкалу на полном графике",
         value=True,
         key="flavor_log_scale"
     )
@@ -652,11 +679,11 @@ with tab_time:
         y=flavor_metric,
         color="brand",
         barmode="group",
-        title=f"{metric_title_map[flavor_metric]} по flavor_group"
+        title=f"{prettify_metric_name(flavor_metric)} по flavor_group"
     )
     fig4.update_layout(
         xaxis_title="Flavor group",
-        yaxis_title=metric_title_map[flavor_metric],
+        yaxis_title=prettify_metric_name(flavor_metric),
         yaxis_type="log" if use_log_scale else "linear"
     )
     st.plotly_chart(fig4, use_container_width=True)
@@ -670,11 +697,11 @@ with tab_time:
         y=flavor_metric,
         color="brand",
         barmode="group",
-        title=f"{metric_title_map[flavor_metric]} по flavor_group без plain"
+        title=f"{prettify_metric_name(flavor_metric)} по flavor_group без plain"
     )
     fig5.update_layout(
         xaxis_title="Flavor group",
-        yaxis_title=metric_title_map[flavor_metric]
+        yaxis_title=prettify_metric_name(flavor_metric)
     )
     st.plotly_chart(fig5, use_container_width=True)
 
@@ -686,8 +713,8 @@ with tab_time:
 # TAB 6 - COMPETITORS
 # --------------------------------------------------
 with tab_comp:
-    st.header("Competitors")
-    st.caption("Конкуренты внутри loyal-когорты, включая brand и no_brand.")
+    st.header("Конкуренты")
+    st.caption("Конкуренты внутри loyal-когорты, включая брендированные позиции и no_brand.")
 
     col1, col2 = st.columns([1.2, 0.8])
     with col1:
@@ -701,7 +728,7 @@ with tab_comp:
     st.subheader("Сравнение выбранных конкурентов")
     competitor_options = competitor_brand_summary["brand"].dropna().tolist()
     selected_competitors = st.multiselect(
-        "Выберите конкурентов",
+        "Выберите конкурентов для сравнения",
         competitor_options,
         default=[b for b in ["hochland", "almette", "ekomilk", "no_brand"] if b in competitor_options],
         key="competitors_select"
@@ -715,7 +742,7 @@ with tab_comp:
             comp_df.sort_values("total_kg", ascending=False),
             x="brand",
             y="total_kg",
-            title="Конкуренты по объему, кг"
+            title="Конкуренты по объёму, кг"
         )
         fig.update_layout(xaxis_title="Бренд", yaxis_title="Кг")
         st.plotly_chart(fig, use_container_width=True)
@@ -731,20 +758,47 @@ with tab_comp:
         st.plotly_chart(fig2, use_container_width=True)
 
     st.subheader("Фасовки выбранных конкурентов")
+
     comp_pack = pack_total_all[pack_total_all["brand"].isin(selected_competitors)].copy()
-    fig3 = px.bar(
-        comp_pack.sort_values("total_kg", ascending=False).head(25),
-        x="pack_size_g",
-        y="total_kg",
-        color="brand",
-        barmode="group",
-        title="Фасовки выбранных конкурентов"
+    comp_pack_filtered = comp_pack[comp_pack["total_kg"] >= 5].copy()
+
+    if len(comp_pack_filtered) > 0:
+        heatmap_df = comp_pack_filtered.pivot_table(
+            index="brand",
+            columns="pack_size_g",
+            values="total_kg",
+            aggfunc="sum",
+            fill_value=0
+        )
+
+        fig3 = px.imshow(
+            heatmap_df,
+            aspect="auto",
+            labels=dict(x="Фасовка, г", y="Бренд", color="Кг"),
+            title="Тепловая карта фасовок по выбранным конкурентам"
+        )
+        st.plotly_chart(fig3, use_container_width=True)
+    else:
+        st.warning("Для выбранных конкурентов нет достаточного объёма по фасовкам для построения тепловой карты.")
+
+    st.markdown("**Топ фасовок по каждому выбранному бренду**")
+    top_pack_by_brand = (
+        comp_pack
+        .sort_values(["brand", "total_kg"], ascending=[True, False])
+        .groupby("brand", as_index=False)
+        .head(3)
+        .sort_values(["brand", "total_kg"], ascending=[True, False])
+        .reset_index(drop=True)
     )
-    fig3.update_layout(xaxis_title="Фасовка, г", yaxis_title="Кг")
-    st.plotly_chart(fig3, use_container_width=True)
+
+    st.dataframe(
+        top_pack_by_brand[["brand", "pack_size_g", "total_kg", "price_per_kg_weighted", "avg_pack_price"]],
+        use_container_width=True
+    )
 
     st.subheader("Flavor_group выбранных конкурентов")
     comp_flavor = brand_flavor_all[brand_flavor_all["brand"].isin(selected_competitors)].copy()
+
     fig4 = px.bar(
         comp_flavor.sort_values("total_rub", ascending=False).head(25),
         x="flavor_group",
